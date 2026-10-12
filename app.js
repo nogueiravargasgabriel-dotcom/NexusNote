@@ -1045,6 +1045,8 @@ function loadStudentLocalData() {
     localStorage.getItem(`nexusnote-notes-${state.notebook.id}`) || ""
   );
 
+  loadStudentClassOptions();
+
   input(
     "#student-name",
     localStorage.getItem("nexusnote-student-name") ||
@@ -1323,6 +1325,13 @@ async function sendSubmission() {
     return;
   }
 
+  const classChoice = getSelectedStudentClass();
+
+  if (classesAvailable() && !classChoice.id) {
+    text("#submission-status", "Selecione sua turma.");
+    return;
+  }
+
   /* Sempre corrige de novo: o estudante pode ter alterado as respostas. */
   if (state.questions.length) {
     evaluateAnswers();
@@ -1340,6 +1349,8 @@ async function sendSubmission() {
     student_id: state.user?.id || null,
     student_code: studentCode,
     student_name: studentName || null,
+    class_id: classChoice.id,
+    class_name: classChoice.name,
     notes: getAllStudentNotes().join("\n\n") || null,
     answers: state.answers,
     score: state.score?.correct ?? null,
@@ -1356,9 +1367,15 @@ async function sendSubmission() {
   let response = await insert(payload);
   let withoutMetrics = false;
 
+  /* Banco ainda sem as colunas de turma: envia sem elas. */
+  if (response.error && /class_(id|name)/i.test(response.error.message || "")) {
+    const { class_id, class_name, ...noClassPayload } = payload;
+    response = await insert(noClassPayload);
+  }
+
   /* Banco ainda sem a coluna "metrics": envia sem ela. */
   if (response.error && /metrics/i.test(response.error.message || "")) {
-    const { metrics, ...legacyPayload } = payload;
+    const { metrics, class_id, class_name, ...legacyPayload } = payload;
     response = await insert(legacyPayload);
     withoutMetrics = !response.error;
   }
@@ -2307,6 +2324,7 @@ function bindTeacher() {
   $("#refresh-notebooks")?.addEventListener("click", loadTeacherEnvironment);
   $("#analysis-notebook")?.addEventListener("change", loadAnalysis);
   $("#export-analysis")?.addEventListener("click", exportAnalysis);
+  bindClasses();
 
   document.addEventListener("click", event => {
     const edit = event.target.closest("[data-edit-notebook]");
@@ -2652,6 +2670,7 @@ async function loadTeacherEnvironment() {
   }
 
   state.notebooks = response.data || [];
+  await loadClasses();
   renderTeacherLibrary();
   renderTeacherMetrics();
   fillAnalysisSelect();
@@ -3060,7 +3079,7 @@ async function loadAnalysis() {
   }
 
   state.submissions = response.data || [];
-  renderAnalysis(state.submissions);
+  renderAnalysis(filterSubmissionsByClass(state.submissions));
 }
 
 function renderAnalysis(submissions) {
@@ -3133,6 +3152,7 @@ function renderAnalysis(submissions) {
         return `
           <tr>
             <td>${escapeHtml(row.name)}</td>
+            <td>${renderSubmissionClassCell(item)}</td>
             <td>${escapeHtml(formatDateTime(item.submitted_at))}</td>
             <td>${item.score ?? "Aguardando"}/${item.total_questions || 0}${row.accuracy === null ? "" : ` (${row.accuracy}%)`}</td>
             <td><span class="pill" style="--tone:${row.band.color}">${escapeHtml(row.band.label)}</span></td>
@@ -3154,7 +3174,7 @@ function renderAnalysis(submissions) {
           </tr>
         `;
       }).join("")
-    : `<tr><td colspan="9">Nenhum envio encontrado.</td></tr>`;
+    : `<tr><td colspan="10">Nenhum envio encontrado.</td></tr>`;
 }
 
 /* ---------- Eixo 1: faixas de acerto ---------- */
@@ -3475,7 +3495,7 @@ function drawPie(canvasId, values, labels, colors, legendId) {
 
 function exportAnalysis() {
   const header = [
-    "estudante", "codigo", "envio", "acertos", "total_questoes",
+    "estudante", "codigo", "turma", "envio", "acertos", "total_questoes",
     "percentual_acerto", "faixa", "categoria", "progresso",
     "palavras", "caracteres", "paragrafos", "quebras_linha",
     "tempo_leitura_s", "tempo_sintese_s", "tempo_questoes_s",
@@ -3486,6 +3506,7 @@ function exportAnalysis() {
   const rows = (state.analysisRows || []).map(row => [
     row.item.student_name || "",
     row.item.student_code || "",
+    submissionClassName(row.item),
     row.item.submitted_at || "",
     row.item.score ?? "",
     row.item.total_questions ?? "",

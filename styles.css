@@ -1864,3 +1864,133 @@ td {
     scroll-behavior: auto;
   }
 }
+
+/* ==========================================================================
+   Turmas
+   ========================================================================== */
+
+.teacher-classes {
+  margin: 1.2rem 0;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.class-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.8rem;
+  align-items: end;
+  margin-top: 1rem;
+}
+
+.class-form .form-actions {
+  margin: 0;
+}
+
+.class-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.class-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.class-chip small {
+  opacity: 0.7;
+}
+
+.class-chip button {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.class-select-inline {
+  min-width: 8rem;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 760px) {
+  .class-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Aba de gestão de alunos */
+.student-management-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-top: 1.2rem;
+}
+
+.student-management-tabs .active {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: #32d6ff12;
+}
+
+.students-panel {
+  margin-top: 1rem;
+  padding: 1.2rem;
+  background: #11172cdd;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.students-toolbar {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) auto;
+  align-items: end;
+  gap: .8rem;
+  margin-top: 1rem;
+}
+
+.students-list {
+  display: grid;
+  gap: .7rem;
+}
+
+.student-management-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .7fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #05071166;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.student-management-identity {
+  display: grid;
+  gap: .2rem;
+  min-width: 0;
+}
+
+.student-management-identity strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.student-management-identity span {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: .75rem;
+}
+
+@media (max-width: 720px) {
+  .students-toolbar,
+  .student-management-card {
+    grid-template-columns: 1fr;
+  }
+}

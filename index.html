@@ -268,6 +268,13 @@
                 Código de identificação
                 <input id="student-code" type="text" placeholder="Ex.: TURMA-001" required>
               </label>
+
+              <label>
+                Turma
+                <select id="student-class" required>
+                  <option value="">Selecione sua turma</option>
+                </select>
+              </label>
             </div>
 
             <button id="send-submission" class="primary-button" type="button">
@@ -322,6 +329,33 @@
             <article><strong id="metric-submissions">0</strong><span>Envios recebidos</span></article>
           </div>
 
+          <section class="teacher-classes">
+            <div class="column-heading">
+              <span class="eyebrow">Organização</span>
+              <h2>Cadastrar turmas.</h2>
+              <p>As turmas cadastradas aparecem para o estudante no envio e servem de filtro na análise.</p>
+            </div>
+
+            <form id="class-form" class="class-form">
+              <input id="class-id" type="hidden">
+              <label>
+                Nome da turma
+                <input id="class-name" type="text" placeholder="Ex.: 1º ano A" required>
+              </label>
+              <label>
+                Descrição (opcional)
+                <input id="class-description" type="text" placeholder="Ex.: Turno da manhã">
+              </label>
+              <div class="form-actions">
+                <button id="class-cancel" class="outline-button" type="button" hidden>Cancelar</button>
+                <button id="class-submit" class="primary-button" type="submit">Cadastrar turma</button>
+              </div>
+            </form>
+            <p id="class-status" class="status"></p>
+
+            <div id="class-list" class="class-list"></div>
+          </section>
+
           <div class="teacher-columns">
             <section class="teacher-column">
               <div class="column-heading">
@@ -340,7 +374,8 @@
 
                   <label>
                     Turma
-                    <input id="notebook-class" type="text" required>
+                    <input id="notebook-class" type="text" list="class-options" required>
+                    <datalist id="class-options"></datalist>
                   </label>
 
                   <label>
@@ -455,6 +490,13 @@
                 </select>
               </label>
 
+              <label>
+                Turma analisada
+                <select id="analysis-class">
+                  <option value="">Todas as turmas</option>
+                </select>
+              </label>
+
               <button id="export-analysis" class="outline-button" type="button">
                 Exportar CSV
               </button>
@@ -549,6 +591,7 @@
                   <thead>
                     <tr>
                       <th>Estudante</th>
+                      <th>Turma</th>
                       <th>Envio</th>
                       <th>Acertos</th>
                       <th>Faixa</th>
@@ -578,6 +621,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseconfig.js"></script>
+  <script src="turmas.js"></script>
   <script src="app.js"></script>
   <script src="analytics.js"></script>
   <script src="teacher-interface.js"></script>
