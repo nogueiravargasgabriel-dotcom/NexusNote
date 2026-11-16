@@ -639,6 +639,12 @@ function bindReader() {
 
   $("#student-name")?.addEventListener("input", event => {
     localStorage.setItem("nexusnote-student-name", event.target.value);
+    input("#quick-student-name", event.target.value);
+  });
+
+  $("#quick-student-name")?.addEventListener("input", event => {
+    localStorage.setItem("nexusnote-student-name", event.target.value);
+    input("#student-name", event.target.value);
   });
 
   $("#check-answers")?.addEventListener("click", evaluateAnswers);
@@ -647,6 +653,7 @@ function bindReader() {
   $("#download-report")?.addEventListener("click", downloadReport);
   $("#download-mind-map")?.addEventListener("click", downloadMindMap);
   $("#download-mind-map-png")?.addEventListener("click", downloadMindMapPng);
+  $("#download-mind-map-jpg")?.addEventListener("click", downloadMindMapJpg);
   $("#share-whatsapp")?.addEventListener("click", shareWhatsApp);
 
   bindTracking();
@@ -1047,12 +1054,14 @@ function loadStudentLocalData() {
 
   loadStudentClassOptions();
 
-  input(
-    "#student-name",
+  const savedStudentName =
     localStorage.getItem("nexusnote-student-name") ||
-      state.profile?.full_name ||
-      ""
-  );
+    state.profile?.full_name ||
+    "";
+  input("#student-name", savedStudentName);
+  input("#quick-student-name", savedStudentName);
+  state.aiSummary = null;
+  state.aiBranches = null;
 }
 
 /* ==========================================================================
@@ -1505,10 +1514,17 @@ function buildStudyModel() {
     concepts: teacherTexts.flatMap(block => keySentences(block.text, 2)).slice(0, 6),
     summaries: getSummaryEntries().filter(entry => entry.text),
     notes: getGeneralNotes(),
-    student: getValue("#student-name") || state.profile?.full_name || "",
+    student:
+      getValue("#quick-student-name") ||
+      getValue("#student-name") ||
+      localStorage.getItem("nexusnote-student-name") ||
+      state.profile?.full_name ||
+      "",
     generatedAt: new Date(),
     score,
-    progress: calculateProgress()
+    progress: calculateProgress(),
+    aiSummary: state.aiSummary || null,
+    aiBranches: state.aiBranches || null
   };
 }
 
@@ -1606,6 +1622,40 @@ function summaryMarkup(model, { header = true } = {}) {
     `);
   }
 
+  if (model.aiSummary) {
+    parts.push(`
+      <section class="ns-block ns-ai-summary">
+        <div class="ns-ai-badge">
+          <span class="ns-sparkle">✨</span>
+          <strong>Síntese Inteligente das suas anotações</strong>
+        </div>
+        ${model.aiSummary.overview ? `<div class="ns-ai-overview">${paragraphsHtml(model.aiSummary.overview)}</div>` : ""}
+        ${
+          Array.isArray(model.aiSummary.keyPoints) && model.aiSummary.keyPoints.length
+            ? `
+            <div class="ns-ai-subblock">
+              <h5>Pontos-chave extraídos do seu estudo</h5>
+              <ol class="ns-points">
+                ${model.aiSummary.keyPoints.map(pt => `<li>${escapeHtml(pt)}</li>`).join("")}
+              </ol>
+            </div>
+          `
+            : ""
+        }
+        ${
+          model.aiSummary.connections
+            ? `
+            <div class="ns-ai-subblock">
+              <h5>Conexões conceituais e aplicações</h5>
+              <p>${escapeHtml(model.aiSummary.connections)}</p>
+            </div>
+          `
+            : ""
+        }
+      </section>
+    `);
+  }
+
   if (model.objective) {
     parts.push(`
       <section class="ns-block">
@@ -1699,6 +1749,31 @@ const MAP_FONT = "'Space Grotesk','Manrope',Arial,sans-serif";
 const MAP_BODY_FONT = "'Manrope',Arial,sans-serif";
 
 function mindMapBranches(model) {
+  if (Array.isArray(model.aiBranches) && model.aiBranches.length > 0) {
+    const aiBranches = model.aiBranches
+      .filter(b => b && b.label && Array.isArray(b.items) && b.items.length)
+      .map(b => ({
+        label: String(b.label).slice(0, 28),
+        color: b.color || "#32d6ff",
+        items: b.items.map(it => shorten(String(it), 110)).slice(0, 4)
+      }));
+
+    if (aiBranches.length > 0) {
+      if (model.score) {
+        aiBranches.push({
+          label: "Desempenho",
+          color: "#61e4b2",
+          items: [
+            `${model.score.correct} de ${model.score.total} questões corretas (${model.score.pct ?? 0}%)`,
+            `Faixa: ${model.score.band.label}`,
+            `Progresso estimado: ${model.progress}%`
+          ]
+        });
+      }
+      return aiBranches;
+    }
+  }
+
   const branches = [];
 
   if (model.objective) {
@@ -1863,8 +1938,13 @@ function mindMapSvg(model) {
   <text x="64" y="61" text-anchor="middle" font-family="${MAP_FONT}" font-size="24" font-weight="700" fill="#f5f7ff">N</text>
   <text x="104" y="48" font-family="${MAP_FONT}" font-size="17" font-weight="700" letter-spacing="2" fill="#f5f7ff">NEXUSNOTE</text>
   <text x="104" y="66" font-family="${MAP_BODY_FONT}" font-size="11" fill="#8e98b8">Conhecimento conectado</text>
-  <text x="${W - 40}" y="48" text-anchor="end" font-family="${MAP_FONT}" font-size="15" font-weight="700" fill="#32d6ff">Mapa mental</text>
-  <text x="${W - 40}" y="66" text-anchor="end" font-family="${MAP_BODY_FONT}" font-size="11" fill="#8e98b8">${escapeHtml(dateLabel)}</text>
+  <g transform="translate(${W - 350}, 24)">
+    <rect width="310" height="52" rx="14" fill="#11172c" stroke="#32d6ff" stroke-width="1.5" stroke-opacity=".85"/>
+    <circle cx="28" cy="26" r="15" fill="#7c6cff" fill-opacity=".3" stroke="#32d6ff" stroke-width="1.2"/>
+    <text x="28" y="32" text-anchor="middle" font-family="${MAP_FONT}" font-size="13" font-weight="700" fill="#32d6ff">👤</text>
+    <text x="54" y="21" font-family="${MAP_FONT}" font-size="10" font-weight="700" fill="#32d6ff" letter-spacing="1.2">MAPA DO ESTUDANTE</text>
+    <text x="54" y="41" font-family="${MAP_BODY_FONT}" font-size="14" font-weight="700" fill="#f5f7ff">${escapeHtml(shorten(model.student || "Estudante", 28))}</text>
+  </g>
   <line x1="40" y1="94" x2="${W - 40}" y2="94" stroke="#252d4b"/>
 
   <rect x="${rootX}" y="${rootY}" width="${rootW}" height="${rootH}" rx="30" fill="url(#nn-root)"/>
@@ -1879,11 +1959,7 @@ function mindMapSvg(model) {
 
   <line x1="40" y1="${H - 52}" x2="${W - 40}" y2="${H - 52}" stroke="#252d4b"/>
   <text x="40" y="${H - 26}" font-family="${MAP_FONT}" font-size="11" font-weight="700" letter-spacing="1.5" fill="#8e98b8">NEXUSNOTE · CONHECIMENTO CONECTADO</text>
-  ${
-    model.student
-      ? `<text x="${W - 40}" y="${H - 26}" text-anchor="end" font-family="${MAP_BODY_FONT}" font-size="12" fill="#8e98b8">${escapeHtml(model.student)}</text>`
-      : ""
-  }
+  <text x="${W - 40}" y="${H - 26}" text-anchor="end" font-family="${MAP_BODY_FONT}" font-size="12" font-weight="600" fill="#32d6ff">${model.student ? `${escapeHtml(model.student)} · ` : ""}${escapeHtml(dateLabel)}</text>
 </svg>`;
 
   return { svg, width: W, height: H };
@@ -1891,15 +1967,75 @@ function mindMapSvg(model) {
 
 /* ---------- Ações da seção de síntese ---------- */
 
-function generateReport() {
+async function generateReport() {
   if (!state.notebook) return;
 
+  const btn = $("#generate-report");
+  const originalHtml = btn ? btn.innerHTML : "";
+
+  const quickName = getValue("#quick-student-name") || "";
+  const subName = getValue("#student-name") || "";
+  if (quickName && !subName) {
+    setValue("#student-name", quickName);
+    localStorage.setItem("nexusnote-student-name", quickName);
+  } else if (subName && !quickName) {
+    setValue("#quick-student-name", subName);
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `✨ Analisando anotações com IA...`;
+  }
+
   const model = buildStudyModel();
+  let usedAi = false;
 
-  $("#student-summary").innerHTML = summaryMarkup(model);
-  $("#mind-map").innerHTML = mindMapSvg(model).svg;
+  if (window.supabaseClient && window.supabaseClient.functions) {
+    try {
+      const teacherTexts = state.blocks
+        .filter(b => b.type === "teacher_text" && b.text.trim())
+        .map(b => b.text);
 
-  showToast("Resumo e mapa mental gerados.");
+      const studentTexts = model.summaries.map(s => s.text).filter(Boolean);
+
+      const response = await window.supabaseClient.functions.invoke("generate-mindmap", {
+        body: {
+          studentName: model.student,
+          notebookTitle: model.title,
+          subject: model.subject,
+          objective: model.objective,
+          keywords: model.keywords,
+          studentTexts,
+          teacherTexts,
+          notes: model.notes
+        }
+      });
+
+      if (response && !response.error && response.data && response.data.success) {
+        state.aiSummary = response.data.summary;
+        state.aiBranches = response.data.branches;
+        usedAi = true;
+      }
+    } catch (err) {
+      console.warn("Edge Function de IA indisponível ou em configuração:", err);
+    }
+  }
+
+  const finalModel = buildStudyModel();
+
+  $("#student-summary").innerHTML = summaryMarkup(finalModel);
+  $("#mind-map").innerHTML = mindMapSvg(finalModel).svg;
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+
+  if (usedAi) {
+    showToast("✨ Resumo e mapa mental gerados com IA!");
+  } else {
+    showToast("Resumo e mapa mental gerados.");
+  }
 }
 
 function fileSlug() {
@@ -1924,6 +2060,50 @@ function downloadMindMap() {
     ),
     `nexusnote-mapa-${fileSlug()}.svg`
   );
+}
+
+function downloadMindMapJpg() {
+  if (!state.notebook) return;
+
+  const { svg, width, height } = mindMapSvg(buildStudyModel());
+  const url = URL.createObjectURL(
+    new Blob([svg], { type: "image/svg+xml;charset=utf-8" })
+  );
+
+  const image = new Image();
+
+  image.onload = () => {
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#080b18";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    context.scale(scale, scale);
+    context.drawImage(image, 0, 0, width, height);
+
+    URL.revokeObjectURL(url);
+
+    canvas.toBlob(blob => {
+      if (blob) {
+        downloadBlob(blob, `nexusnote-mapa-${fileSlug()}.jpg`);
+        showToast("Mapa mental em JPG baixado com sucesso!");
+      } else {
+        showToast("Não foi possível gerar o JPG.");
+      }
+    }, "image/jpeg", 0.95);
+  };
+
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    showToast("Não foi possível gerar o JPG.");
+  };
+
+  image.src = url;
 }
 
 function downloadMindMapPng() {
