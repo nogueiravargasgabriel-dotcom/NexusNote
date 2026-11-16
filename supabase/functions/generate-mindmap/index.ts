@@ -7,41 +7,166 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
-    const { model = "gemini-3.5-flash", withJsonMime = false } = await req.json().catch(() => ({}));
+    const {
+      studentName = "",
+      notebookTitle = "",
+      subject = "",
+      objective = "",
+      keywords = [],
+      studentTexts = [],
+      teacherTexts = [],
+      notes = "",
+    } = await req.json();
+
     const apiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_KEY");
 
-    const t0 = Date.now();
-    const config: any = { temperature: 0.2 };
-    if (withJsonMime) config.responseMimeType = "application/json";
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({
+          error: "GEMINI_API_KEY não configurada nos segredos do Supabase.",
+          fallback: true,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    const combinedStudentText = [
+      ...studentTexts,
+      notes ? `Anotações gerais: ${notes}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const prompt = `Você é um assistente pedagógico especializado em criar sínteses e mapas mentais para estudantes na plataforma NexusNote.
+
+DADOS DO ESTUDO:
+- Estudante: ${studentName || "Estudante"}
+- Caderno: ${notebookTitle}
+- Componente/Matéria: ${subject}
+- Objetivo de aprendizagem: ${objective || "Não informado"}
+- Palavras-chave: ${keywords.join(", ") || "Não informadas"}
+
+TEXTO PRODUZIDO PELO ESTUDANTE:
+"""
+${combinedStudentText || "O estudante realizou o estudo do caderno e acompanhou os materiais de apoio."}
+"""
+
+TEXTOS DE APOIO DO PROFESSOR:
+"""
+${teacherTexts.slice(0, 3).join("\n\n")}
+"""
+
+TAREFA:
+Analise as anotações do estudante e o conteúdo de apoio.
+Gere um JSON com:
+1. "summary":
+   - "overview": síntese em 2 a 3 parágrafos claros, motivadores e bem articulados destacando o que o estudante aprendeu.
+   - "keyPoints": array com 3 a 5 pontos-chave essenciais.
+   - "connections": 1 parágrafo explicando as conexões com o cotidiano e aplicações práticas.
+2. "branches": array de 4 a 6 ramos para o mapa mental, no formato:
+   - "label": título do ramo (curto, 2 a 4 palavras, ex: "Conceito Central", "Aplicações Práticas", "Ideias do Estudante", "Pontos de Atenção").
+   - "color": uma cor em hexadecimal entre: "#32d6ff" (ciano), "#7c6cff" (roxo), "#61e4b2" (verde), "#ffd166" (amarelo), "#ff8d9b" (rosa).
+   - "items": array com 2 a 4 frases/tópicos curtos e objetivos (máximo 80 caracteres cada).
+
+RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
+
+    const fastModels = [
+      "gemini-flash-lite-latest",
+      "gemini-3.5-flash-lite",
+      "gemini-flash-latest"
+    ];
+
+    let rawText = null;
+    let chosenModel = "";
+    let lastError = null;
+
+    for (const model of fastModels) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(15000),
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.2,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          lastError = await response.text();
+          console.warn(`Tentativa com ${model} retornou status ${response.status}:`, lastError);
+          continue;
+        }
+
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          rawText = text;
+          chosenModel = model;
+          break;
+        }
+      } catch (err) {
+        lastError = String(err);
+        console.warn(`Falha na chamada com ${model}:`, err);
+      }
+    }
+
+    if (!rawText) {
+      return new Response(
+        JSON.stringify({
+          error: "Erro ao consultar os modelos Gemini disponíveis",
+          details: lastError,
+          fallback: true,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Extrair JSON limpo mesmo se envolvido em blocos markdown
+    let cleanJson = rawText.trim();
+    const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanJson = jsonMatch[0];
+    }
+
+    const parsed = JSON.parse(cleanJson);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        summary: parsed.summary || null,
+        branches: parsed.branches || [],
+        modelUsed: chosenModel,
+      }),
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(8000),
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: "Gere um JSON simples: {\"status\": \"sucesso\", \"mensagem\": \"ola\"}" }] }],
-          generationConfig: config
-        })
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-
-    const elapsed = Date.now() - t0;
-    const st = res.status;
-    const text = await res.text();
-
-    return new Response(JSON.stringify({ model, elapsed, status: st, text: text.slice(0, 300) }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  } catch (error) {
+    console.error("Erro interno:", error);
+    return new Response(
+      JSON.stringify({ error: error.message, fallback: true }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
