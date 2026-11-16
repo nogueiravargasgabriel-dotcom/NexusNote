@@ -78,8 +78,45 @@ Gere um JSON estrito com:
 
 RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
 
+    // Detectar modelos suportados pela chave da API
+    const preferredModels = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-1.5-flash-latest",
+      "gemini-1.5-flash-002",
+      "gemini-1.5-flash-001",
+      "gemini-1.5-pro",
+      "gemini-pro"
+    ];
+
+    let chosenModel = "gemini-2.0-flash";
+
+    try {
+      const listRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const available = (listData.models || [])
+          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+          .map((m: any) => m.name.replace(/^models\//, ""));
+
+        const found = preferredModels.find((p) => available.includes(p)) ||
+          available.find((m: string) => m.includes("flash")) ||
+          available[0];
+
+        if (found) {
+          chosenModel = found;
+          console.log("Modelo Gemini selecionado:", chosenModel);
+        }
+      }
+    } catch (e) {
+      console.warn("Aviso ao listar modelos do Gemini:", e);
+    }
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,6 +152,7 @@ RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
         success: true,
         summary: parsed.summary || null,
         branches: parsed.branches || [],
+        modelUsed: chosenModel,
       }),
       {
         status: 200,
