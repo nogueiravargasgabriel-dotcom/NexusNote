@@ -78,73 +78,70 @@ Gere um JSON estrito com:
 
 RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
 
-    // Detectar modelos suportados pela chave da API
-    const preferredModels = [
-      "gemini-2.5-flash",
+    // Lista de modelos compatíveis por ordem de preferência
+    const candidateModels = [
       "gemini-2.0-flash",
+      "gemini-2.0-flash-lite",
       "gemini-1.5-flash",
-      "gemini-1.5-flash-latest",
-      "gemini-1.5-flash-002",
-      "gemini-1.5-flash-001",
+      "gemini-1.5-flash-8b",
       "gemini-1.5-pro",
       "gemini-pro"
     ];
 
-    let chosenModel = "gemini-2.0-flash";
+    let rawText = null;
+    let chosenModel = "";
+    let lastError = null;
 
-    try {
-      const listRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-      );
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const available = (listData.models || [])
-          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
-          .map((m: any) => m.name.replace(/^models\//, ""));
+    for (const model of candidateModels) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.3,
+              },
+            }),
+          }
+        );
 
-        const found = preferredModels.find((p) => available.includes(p)) ||
-          available.find((m: string) => m.includes("flash")) ||
-          available[0];
-
-        if (found) {
-          chosenModel = found;
-          console.log("Modelo Gemini selecionado:", chosenModel);
+        if (!response.ok) {
+          const errText = await response.text();
+          console.warn(`Modelo ${model} não respondeu 200:`, errText);
+          lastError = errText;
+          continue;
         }
+
+        const result = await response.json();
+        rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          chosenModel = model;
+          break;
+        }
+      } catch (err) {
+        console.warn(`Erro na tentativa com ${model}:`, err);
+        lastError = String(err);
       }
-    } catch (e) {
-      console.warn("Aviso ao listar modelos do Gemini:", e);
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.3,
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Erro na API Gemini:", errText);
+    if (!rawText) {
       return new Response(
-        JSON.stringify({ error: "Erro ao consultar o Gemini", details: errText, fallback: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "Erro ao consultar os modelos Gemini disponíveis",
+          details: lastError,
+          fallback: true,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
-    const result = await response.json();
-    const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     const parsed = JSON.parse(rawText);
 
     return new Response(
