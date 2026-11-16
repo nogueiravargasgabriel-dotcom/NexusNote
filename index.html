@@ -220,33 +220,47 @@
 
           <section class="report-section">
             <div class="section-title compact">
-              <span class="eyebrow">Síntese</span>
+              <span class="eyebrow">Síntese Inteligente</span>
               <h2>Resumo e mapa mental.</h2>
-              <p>Gere uma síntese do estudo e visualize as conexões principais.</p>
+              <p>Gere uma síntese visual do seu estudo conectando as ideias centrais com inteligência artificial.</p>
+            </div>
+
+            <div class="synthesis-header-bar">
+              <div class="synthesis-student-input-wrap">
+                <label for="quick-student-name" class="synthesis-label">
+                  <span class="badge-icon">👤</span> Seu nome para o mapa mental:
+                </label>
+                <input id="quick-student-name" type="text" placeholder="Digite seu nome para personalizar o mapa..." class="synthesis-input">
+              </div>
+              <span class="synthesis-hint">O nome digitado será gravado com destaque na imagem final em JPG/PNG.</span>
             </div>
 
             <div id="student-summary" class="summary-box ns-summary"></div>
             <div id="mind-map" class="mind-map"></div>
 
             <div class="reader-actions">
-              <button id="generate-report" class="primary-button" type="button">
-                Gerar resumo e mapa mental
+              <button id="generate-report" class="primary-button ai-btn" type="button">
+                ✨ Gerar resumo e mapa mental com IA
               </button>
 
-              <button id="download-report" class="outline-button" type="button">
-                Baixar relatório PDF
-              </button>
-
-              <button id="download-mind-map" class="outline-button" type="button">
-                Baixar mapa (SVG)
+              <button id="download-mind-map-jpg" class="primary-button outline-button highlight-btn" type="button">
+                🖼️ Baixar mapa (JPG)
               </button>
 
               <button id="download-mind-map-png" class="outline-button" type="button">
-                Baixar mapa (PNG)
+                📄 Baixar mapa (PNG)
+              </button>
+
+              <button id="download-mind-map" class="outline-button" type="button">
+                📐 Baixar mapa (SVG)
+              </button>
+
+              <button id="download-report" class="outline-button" type="button">
+                📑 Baixar relatório PDF
               </button>
 
               <button id="share-whatsapp" class="outline-button" type="button">
-                Enviar por WhatsApp
+                💬 Enviar por WhatsApp
               </button>
             </div>
           </section>
