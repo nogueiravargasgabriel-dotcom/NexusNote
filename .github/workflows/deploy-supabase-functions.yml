@@ -16,13 +16,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: 1.78.1
-
       - name: Deploy generate-mindmap
         run: |
-          supabase functions deploy generate-mindmap --project-ref tlbjolxocqozkxtmswrr --no-verify-jwt --yes
+          npx supabase functions deploy generate-mindmap --project-ref tlbjolxocqozkxtmswrr --no-verify-jwt --yes
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
