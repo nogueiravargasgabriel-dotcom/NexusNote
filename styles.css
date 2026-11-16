@@ -1994,3 +1994,154 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Melhorias de UX e Síntese com IA para Estudantes ---------- */
+
+.synthesis-header-bar {
+  display: grid;
+  gap: .6rem;
+  padding: 1.1rem 1.3rem;
+  background:
+    radial-gradient(circle at 0% 0%, #7c6cff22, transparent 65%),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+
+.synthesis-student-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .8rem;
+}
+
+.synthesis-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: .92rem;
+  color: var(--cyan);
+}
+
+.synthesis-input {
+  flex: 1;
+  min-width: 220px;
+  padding: .65rem .9rem;
+  background: var(--deep);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: .95rem;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.synthesis-input:focus {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(50, 214, 255, .25);
+}
+
+.synthesis-hint {
+  font-size: .78rem;
+  color: var(--muted);
+}
+
+.reader-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+}
+
+.primary-button.ai-btn {
+  background: linear-gradient(135deg, var(--cyan), var(--primary));
+  color: #050711;
+  font-weight: 800;
+  border: none;
+  box-shadow: 0 4px 20px rgba(50, 214, 255, .25);
+  transition: transform .2s, box-shadow .2s, filter .2s;
+}
+
+.primary-button.ai-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(124, 108, 255, .4);
+  filter: brightness(1.08);
+}
+
+.highlight-btn {
+  border-color: var(--cyan) !important;
+  color: var(--cyan) !important;
+  background: rgba(50, 214, 255, .08) !important;
+  font-weight: 700 !important;
+}
+
+.highlight-btn:hover {
+  background: rgba(50, 214, 255, .18) !important;
+  box-shadow: 0 0 16px rgba(50, 214, 255, .3) !important;
+}
+
+/* ---------- Card de Síntese Inteligente (IA) ---------- */
+
+.ns-ai-summary {
+  background:
+    radial-gradient(circle at 100% 0%, #32d6ff1a, transparent 50%),
+    radial-gradient(circle at 0% 100%, #7c6cff1a, transparent 50%),
+    rgba(17, 23, 44, .85) !important;
+  border: 1px solid rgba(50, 214, 255, .35) !important;
+  border-radius: 12px;
+  padding: 1.4rem;
+  margin-bottom: 1.2rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .25);
+}
+
+.ns-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem .85rem;
+  background: rgba(50, 214, 255, .12);
+  border: 1px solid var(--cyan);
+  border-radius: 20px;
+  color: var(--cyan);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .5px;
+  margin-bottom: .9rem;
+}
+
+.ns-ai-overview {
+  font-size: .98rem;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+.ns-ai-subblock {
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid rgba(37, 45, 75, .6);
+}
+
+.ns-ai-subblock h5 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--cyan);
+  margin-bottom: .5rem;
+}
+
+/* Efeito visual melhorado do mapa mental */
+.mind-map {
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(5, 7, 17, .6);
+  transition: border-color .2s;
+}
+
+.mind-map:hover {
+  border-color: rgba(50, 214, 255, .4);
+}
