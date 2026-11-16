@@ -38,6 +38,26 @@ serve(async (req) => {
       );
     }
 
+    // Consultar lista real de modelos suportados por esta chave
+    let availableModels: string[] = [];
+    try {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        availableModels = (listData.models || [])
+          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+          .map((m: any) => m.name.replace(/^models\//, ""));
+      } else {
+        const errList = await listRes.text();
+        return new Response(
+          JSON.stringify({ error: "Erro ao listar modelos Gemini", details: errList, fallback: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } catch (e) {
+      console.warn("Falha ao buscar lista de modelos:", e);
+    }
+
     const combinedStudentText = [
       ...studentTexts,
       notes ? `Anotações gerais: ${notes}` : "",
@@ -78,21 +98,12 @@ Gere um JSON estrito com:
 
 RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
 
-    // Lista de modelos compatíveis por ordem de preferência
-    const candidateModels = [
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-pro",
-      "gemini-pro"
-    ];
-
+    // Testar modelos disponíveis
     let rawText = null;
     let chosenModel = "";
     let lastError = null;
 
-    for (const model of candidateModels) {
+    for (const model of availableModels) {
       try {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -110,9 +121,7 @@ RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
         );
 
         if (!response.ok) {
-          const errText = await response.text();
-          console.warn(`Modelo ${model} não respondeu 200:`, errText);
-          lastError = errText;
+          lastError = await response.text();
           continue;
         }
 
@@ -123,7 +132,6 @@ RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
           break;
         }
       } catch (err) {
-        console.warn(`Erro na tentativa com ${model}:`, err);
         lastError = String(err);
       }
     }
@@ -131,7 +139,8 @@ RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
     if (!rawText) {
       return new Response(
         JSON.stringify({
-          error: "Erro ao consultar os modelos Gemini disponíveis",
+          error: "Nenhum modelo Gemini da lista gerou conteúdo",
+          availableModels,
           details: lastError,
           fallback: true,
         }),
@@ -157,7 +166,6 @@ RESPONDA EXCLUSIVAMENTE COM O OBJETO JSON VÁLIDO.`;
       }
     );
   } catch (error) {
-    console.error("Erro interno:", error);
     return new Response(
       JSON.stringify({ error: error.message, fallback: true }),
       {
